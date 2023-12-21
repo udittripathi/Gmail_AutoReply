@@ -6,7 +6,7 @@ const fs = require("fs").promises;
 const { google } = require("googleapis");
 
 const port = 8080;
-// these are the scope that we want to access 
+
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
@@ -14,31 +14,25 @@ const SCOPES = [
   "https://mail.google.com/",
 ];
 
-// i kept the label name
-const labelName = "Vacation Auto-Reply";
+const labelName = "Gmail AutoReply";
 
 
 app.get("/", async (req, res) => {
 
-  // here i am taking google GMAIL  authentication 
+  //GMAIL  authentication 
   const auth = await authenticate({
     keyfilePath: path.join(__dirname, "credentials.json"),
     scopes: SCOPES,
   });
 
-  // console.log("this is auth",auth)
-
-  // here i getting authorize gmail id
   const gmail = google.gmail({ version: "v1", auth });
 
 
-  //  here i am finding all the labels availeble on current gmail
   const response = await gmail.users.labels.list({
     userId: "me",
   });
 
 
-  //  this function is finding all email that have unreplied or unseen
   async function getUnrepliesMessages(auth) {
     const gmail = google.gmail({ version: "v1", auth });
     const response = await gmail.users.messages.list({
@@ -46,11 +40,11 @@ app.get("/", async (req, res) => {
       labelIds: ["INBOX"],
       q: "is:unread",
     });
-    
+
     return response.data.messages || [];
   }
 
-  //  this function generating the label ID
+  // Generating the label ID
   async function createLabel(auth) {
     const gmail = google.gmail({ version: "v1", auth });
     try {
@@ -79,16 +73,13 @@ app.get("/", async (req, res) => {
   }
 
   async function main() {
-    // Create a label for theApp
+    // Create a label for the App
     const labelId = await createLabel(auth);
-    // console.log(`Label  ${labelId}`);
-    // Repeat  in Random intervals
     setInterval(async () => {
       //Get messages that have no prior reply
       const messages = await getUnrepliesMessages(auth);
-      // console.log("Unreply messages", messages);
 
-      //  Here i am checking is there any gmail that did not get reply
+      //Checking is there any gmail that did not get reply
       if (messages && messages.length > 0) {
         for (const message of messages) {
           const messageData = await gmail.users.messages.get({
@@ -108,19 +99,17 @@ app.get("/", async (req, res) => {
               userId: "me",
               resource: {
                 raw: Buffer.from(
-                  `To: ${
-                    email.payload.headers.find(
-                      (header) => header.name === "From"
-                    ).value
+                  `To: ${email.payload.headers.find(
+                    (header) => header.name === "From"
+                  ).value
                   }\r\n` +
-                    `Subject: Re: ${
-                      email.payload.headers.find(
-                        (header) => header.name === "Subject"
-                      ).value
-                    }\r\n` +
-                    `Content-Type: text/plain; charset="UTF-8"\r\n` +
-                    `Content-Transfer-Encoding: 7bit\r\n\r\n` +
-                    `Thank you for your email. I'm currently on vacation and will reply to you when I return.\r\n`
+                  `Subject: Re: ${email.payload.headers.find(
+                    (header) => header.name === "Subject"
+                  ).value
+                  }\r\n` +
+                  `Content-Type: text/plain; charset="UTF-8"\r\n` +
+                  `Content-Transfer-Encoding: 7bit\r\n\r\n` +
+                  `Thank you for your email. I'm currently on vacation and will reply to you when I return.\r\n`
                 ).toString("base64"),
               },
             };
@@ -144,7 +133,7 @@ app.get("/", async (req, res) => {
   }
 
 
-  
+
   main();
   // const labels = response.data.labels;
   res.json({ "this is Auth": auth });
